@@ -22,3 +22,5 @@
 .graph-neuron{position:absolute;z-index:2;width:235px;max-width:calc(100% - 20px);padding:11px 13px;border:1px solid #516871;border-radius:8px;background:#0b1b24f2;color:#e9f1eb;font-size:13px;pointer-events:none;box-shadow:0 5px 18px #0004}
 .graph-neuron[hidden]{display:none}.graph-neuron strong{font-size:14px}.graph-neuron span{float:right;color:var(--lime);font-family:monospace}.graph-neuron p{margin:7px 0 0;color:#b4c6cb;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:800px){.neural-viewport{flex:none;height:390px;min-height:0}.graph-gesture{bottom:55px;font-size:12px}.graph-zoom button{width:40px;height:40px}}
+
+.project-source{margin:0;padding:15px 20px;border-top:1px solid var(--line);font-size:14px;line-height:1.6}.project-source a{color:#d4ed9e;text-underline-offset:4px}.project-source a:hover{color:#efffd5}.project-source a:focus-visible{outline:2px solid var(--lime);outline-offset:4px;border-radius:2px}

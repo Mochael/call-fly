@@ -75,8 +75,6 @@ export async function createNeuralPanel(root, readConversation = () => ({})) {
   let receivedAt = -Infinity, timer, animation, lastRender = 0;
   let failed = false;
   get('summary').textContent = `${n.toLocaleString()} neurons · ${manifest.directed_edges.toLocaleString()} connections`;
-  get('edges').textContent = `${indices.length.toLocaleString()} recorded cell-body positions shown. ${(n-indices.length).toLocaleString()} cells have no recorded soma position and still participate in every update. All connections are computed; edge lines are hidden for clarity.`;
-  get('mapping').textContent = 'Moshi’s internal features drive the full connectome inside inference every three audio frames. A fitted readout modifies text predictions before sampling; those text tokens also condition speech. This view receives the same reservoir state, compressed for display. Browser rendering cannot change model computation.';
   function inspect() {
     if (selected < 0) {
       get('inspector').hidden=true;
