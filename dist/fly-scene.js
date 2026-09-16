@@ -168,7 +168,7 @@ export function createFlyScene(canvas, sampleAudio = () => 0) {
   mesh(new THREE.BoxGeometry(1.35,.08,.8),material('#4b6252',{metalness:.2}),scene,[1.6,.35,-.34]);
   bone(scene,[1.6,.39,-.5],[1.6,1.18,-.47],.085,material('#4b6252'));
   const labelCanvas=document.createElement('canvas');labelCanvas.width=512;labelCanvas.height=80;
-  const lc=labelCanvas.getContext('2d');lc.fillStyle='#304b3a';lc.font='24px monospace';lc.fillText('ERIC / DROSOPHILA',15,45);
+  const lc=labelCanvas.getContext('2d');lc.fillStyle='#304b3a';lc.font='24px monospace';lc.fillText('Eric the fruit fly',15,45);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);
   const deskLabel=mesh(new THREE.PlaneGeometry(2.5,.39),new THREE.MeshBasicMaterial({map:labelTexture,transparent:true}),scene,[-1.05,.321,1.66]);deskLabel.rotation.x=-Math.PI/2;
   let state='idle',active=false,started=0,gestureStart=-Infinity,smoothLevel=0,lastScreen=-1,disposed=false;
