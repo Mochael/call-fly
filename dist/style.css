@@ -24,3 +24,5 @@
 @media(max-width:800px){.neural-viewport{flex:none;height:390px;min-height:0}.graph-gesture{bottom:55px;font-size:12px}.graph-zoom button{width:40px;height:40px}}
 
 .project-source{margin:0;padding:16px 20px;border-top:1px solid var(--line);font-size:.875rem;line-height:1.5}.project-source a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:#1b2c23;color:var(--lime);text-decoration:none;transition:background .2s,border-color .2s}.project-source a span:first-child{min-width:0;overflow-wrap:anywhere}.project-source a span:last-child{flex:none}.project-source a:hover{background:#263b2d;border-color:#6c805f;color:#efffd5}.project-source a:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+
+.hint:empty{display:none}

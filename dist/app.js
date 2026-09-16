@@ -139,7 +139,7 @@ async function stopConversation(message = 'You ended the conversation.', reason 
   if (session) return;
   callButton.dataset.active = 'false'; callButton.disabled = !ready;
   label.textContent = 'Call fly'; status.textContent = message;
-  hint.textContent = s.callId ? `Call ${s.callId}` : 'Headphones recommended. Your microphone stays off until you start.';
+  hint.textContent = s.callId ? `Call ${s.callId}` : '';
   stateLight.dataset.state = 'idle'; flyScene?.setState('idle', false);
 }
 async function startConversation() {
