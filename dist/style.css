@@ -23,6 +23,6 @@
 .graph-neuron[hidden]{display:none}.graph-neuron strong{font-size:14px}.graph-neuron span{float:right;color:var(--lime);font-family:monospace}.graph-neuron p{margin:7px 0 0;color:#b4c6cb;line-height:1.4;overflow-wrap:anywhere}
 @media(max-width:800px){.neural-viewport{flex:none;height:390px;min-height:0}.graph-gesture{bottom:55px;font-size:12px}.graph-zoom button{width:40px;height:40px}}
 
-.project-source{margin:0;padding:16px 20px;border-top:1px solid var(--line);font-size:.875rem;line-height:1.5}.project-source a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:44px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:#1b2c23;color:var(--lime);text-decoration:none;transition:background .2s,border-color .2s}.project-source a span:first-child{min-width:0;overflow-wrap:anywhere}.project-source a span:last-child{flex:none}.project-source a:hover{background:#263b2d;border-color:#6c805f;color:#efffd5}.project-source a:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+.project-source{margin:0;padding:15px 20px;border-top:1px solid var(--line);font-size:.875rem;line-height:1.6}.project-source a{color:var(--muted);text-decoration:none}.project-source a span+span{margin-left:4px}.project-source a:hover{color:var(--lime);text-decoration:underline;text-underline-offset:4px}.project-source a:focus-visible{outline:2px solid var(--lime);outline-offset:4px;border-radius:2px}
 
 .hint:empty{display:none}
