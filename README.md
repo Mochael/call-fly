@@ -1,6 +1,6 @@
 # Call fly
 
-Talk with Eric through a live, full-duplex voice model while watching the activity of a fly-connectome reservoir that participates in generating the conversation.
+Meet **Eric the fruit fly**, the character you can call and chat with in this app. Eric listens and talks in real time through a full-duplex voice model, while an interactive brain visualization shows the activity of the fly-connectome reservoir that helps shape his responses.
 
 **Moshi supplies the speech and language capabilities. The fly connectome adds a small adjustment to its text-token predictions.** The visualization displays the same reservoir state used for that adjustment.
 
