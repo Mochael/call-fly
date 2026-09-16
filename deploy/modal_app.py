@@ -2,7 +2,7 @@
 
 Preparation: modal run deploy/modal_app.py::calibrate
 Serving: modal deploy deploy/modal_app.py
-Four independent Moshi sessions per GPU; at most three GPUs, one kept warm.
+Four independent Moshi sessions on one warm GPU; overflow waits on the CPU.
 The stable web_us endpoint is a CPU gateway; diagnostics never consume GPU slots.
 """
 from pathlib import Path
@@ -40,23 +40,11 @@ def calibrate():
     volume.commit()
     return {'calibrated':True}
 
-# Legacy single-call endpoint retained for rollback; it has no warm GPU and
-# the web gateway no longer routes new callers here.
-@app.function(image=image,gpu=SERVING_GPU,cpu=2,memory=8192,timeout=600,
-              region='us',routing_region='us-west',
-              min_containers=0,max_containers=1,scaledown_window=60,
-              volumes={'/app/.runtime/moshi-reservoir':volume},
-              secrets=[modal.Secret.from_name('call-fly-service')])
-@modal.asgi_app()
-def call_worker():
-    from server.moshi_app import app
-    return app
-
 # Upstream Moshi/Mimi share weights across four separately masked/reset rows.
 # Modal counts each WebSocket as one input, matching the four session slots.
 @app.function(image=image.env({'MOSHI_SESSION_CAPACITY':'4'}),gpu=SERVING_GPU,
               cpu=8,memory=16384,timeout=600,region='us',routing_region='us-west',
-              min_containers=1,max_containers=3,scaledown_window=600,
+              min_containers=1,max_containers=1,scaledown_window=600,
               volumes={'/app/.runtime/moshi-reservoir':volume},
               secrets=[modal.Secret.from_name('call-fly-service')])
 @modal.concurrent(max_inputs=4)
@@ -69,7 +57,7 @@ def shared_worker():
 # geometry, diagnostics and waiting connections must not occupy GPU workers.
 gateway_image=(modal.Image.debian_slim(python_version='3.12')
     .pip_install('fastapi==0.141.1','uvicorn==0.53.0','httpx==0.28.1','websockets==15.0.1')
-    .env({'VOICE_REQUIRE_AUTH':'1'})
+    .env({'VOICE_REQUIRE_AUTH':'1','VOICE_CALL_CAPACITY':'4'})
     .add_local_dir(ROOT/'server','/app/server',copy=True,ignore=['**/__pycache__/**','**/*.pyc'])
     .add_local_dir(ROOT/'dist','/app/dist',copy=True,ignore=['client/**','server/**','.openai/**'])
     .add_local_file(ROOT/'.runtime/connectome/manifest.json','/app/.runtime/connectome/manifest.json',copy=True)
@@ -77,8 +65,8 @@ gateway_image=(modal.Image.debian_slim(python_version='3.12')
     .add_local_file(ROOT/'.runtime/connectome/positions.bin','/app/.runtime/connectome/positions.bin',copy=True)
     .workdir('/app'))
 
-@app.function(image=gateway_image,cpu=0.25,memory=512,timeout=600,
-              region='us-west',routing_region='us-west',min_containers=1,max_containers=2,
+@app.function(image=gateway_image,cpu=0.25,memory=512,timeout=900,
+              region='us-west',routing_region='us-west',min_containers=1,max_containers=1,
               secrets=[modal.Secret.from_name('call-fly-service')])
 @modal.concurrent(max_inputs=100)
 @modal.asgi_app()
