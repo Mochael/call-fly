@@ -10,7 +10,7 @@ The fixed recurrence is `x = tanh(W @ (0.6*x + 0.4*input))`. Anatomical contacts
 
 ## Readout and training
 
-The readout is a 128 × 4096 matrix with no bias, fitted offline by ridge regression. The target is the frozen Moshi teacher's normalized hidden state. The residual is `0.03*tanh(pooled @ readout)`, projected through Moshi's existing text head, centered across the vocabulary, and capped at 0.10 RMS in logit units. This changes text probabilities before sampling. Sampled text also conditions audio generation; no independent waveform transformation is added.
+The readout is a 128 × 4096 matrix with no bias, fitted offline by ridge regression. The target is the frozen Moshi teacher's captured hidden state; the training script does not apply separate target normalization. The residual is `0.03*tanh(pooled @ readout)`, projected through Moshi's existing text head, centered across the vocabulary, and capped at 0.10 RMS in logit units. This changes text probabilities before sampling. Sampled text also conditions audio generation; no independent waveform transformation is added.
 
 This is a **causal prototype**, not a demonstrated improvement in conversation. The calibration objective reconstructs teacher features; it does not teach a fly persona, comprehension, or better answers. We do not load FLM's adapter because its hidden dimensions and language backbone differ. Moshi, graph weights, and fitted adapter remain frozen during calls.
 

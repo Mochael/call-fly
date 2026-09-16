@@ -14,3 +14,21 @@ playwright-report/
 dist/client/
 dist/server/
 dist/.openai/
+
+# Private input, output, credentials and local deployment state
+.env.*
+!.env.example
+*.pem
+*.key
+*.log
+*.jsonl
+*.wav
+*.m4a
+*.aiff
+*.aif
+*.mp3
+*.flac
+*.ogg
+*.pcm
+voices/eric/*
+!voices/eric/README.md

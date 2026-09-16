@@ -1,138 +1,203 @@
-# Call fly — Moshi with a connectome reservoir
+# Call fly
 
-A web app with a fly, a phone, and a live speech-to-speech conversation. **Moshi listens while generating speech**, so microphone capture continues while the agent talks. The conversation-history panel is hidden.
+Talk with Eric through a live, full-duplex voice model while watching the activity of a fly-connectome reservoir that participates in generating the conversation.
 
-The full connectome is now **inside Moshi's prediction path**. An offline-fitted readout adds a bounded correction to text scores before sampling; those text tokens also condition speech. The visualization shows that same reservoir state. All weights remain fixed during calls. See [the implemented architecture and calibration](docs/moshi-reservoir.md).
+**Moshi supplies the speech and language capabilities. The fly connectome adds a small adjustment to its text-token predictions.** The visualization displays the same reservoir state used for that adjustment. It is not a separate animation driven by audio volume.
 
-## Start
+This is an experimental integration inspired by [Alex Wormuth's Fly Language Model (FLM)](https://github.com/nftechie/flm). It demonstrates that an anatomical network can influence a pretrained model's output. It does **not** demonstrate better conversation, biological fly understanding, or self-improvement.
 
-On this Mac:
+## The complete path
 
-```sh
-./scripts/start.sh
+```text
+Microphone → Mimi audio encoder → Moshi's streaming temporal model
+                                          │
+                          current 4,096-number internal state
+                                          │
+                              fixed 64-feature summary
+                                          │
+                            fixed input mapping to neurons
+                                          │
+                         full retained MaleCNS connectome
+                           + previous reservoir activity
+                                          │
+                             fixed 128-feature pooling
+                                          │
+                              fitted 128 × 4,096 adapter
+                                          │
+                         small, bounded text-score correction
+                                          │
+Moshi's original text scores ──────────────┤
+                                          ↓
+                                  text-token sampling
+                                          ↓
+                    Moshi audio generator → Mimi decoder → speaker
 ```
 
-Open **http://localhost:8765**, click **Call fly**, and allow the microphone. Headphones are recommended; browser echo cancellation is requested, but speaker/room feedback can still affect duplex conversations. Click **End call** to stop playback and release the microphone.
+The reservoir state also goes to the browser's 3D viewer. Model computation runs on the server and does not depend on rendering the visualization.
 
-When `.runtime/modal-service.json` contains the deployed Modal URL and service token, this command starts a lightweight local proxy. Moshi and the full connectome run on Modal's GPU service; no inference model loads on the Mac. The token stays on the server. Each GPU serves four calls using upstream Moshi masked streaming. One GPU stays warm; overflow scales to at most three GPUs, with cold-start waits for new containers. See [deployment and measurements](docs/deployment.md) and [the upstream serving research](docs/moshi-serving-research.md).
+Moshi processes incoming and outgoing audio continuously, in 80 ms frames. The microphone remains active while Eric speaks; there is no separate speech-to-text → text LLM → text-to-speech pipeline in the current app.
 
-Use `MOSHI_TRANSPORT=modal ./scripts/start.sh` to require the cloud service, or `MOSHI_TRANSPORT=local ./scripts/start.sh` to explicitly use the existing Apple Silicon model.
+## Where the fly connections and weights come from
 
-Moshi uses its standard Moshiko voice and conversational behavior. Eric remains the visual character; this milestone does not claim a custom fly persona, Qwen voice cloning, or guaranteed spoken buzzes. The prior cloned voice and recordings are preserved separately.
+The source is the public **MaleCNS v1.0** anatomical reconstruction, downloaded from [the official FlyEM dataset](https://male-cns.janelia.org/download/). We use the same retention rule as FLM: neurons with a nonempty superclass annotation, excluding `Glia`, and connections whose endpoints are both retained.
 
-## Fresh setup for local inference
+| Quantity | Retained graph |
+| --- | ---: |
+| Neurons | 166,700 |
+| Directed neuron-pair connections | 25,582,938 |
+| Synaptic contacts across those connections | 124,177,617 |
+| Neurons with recorded cell-body positions | 139,662 |
 
-Requires Apple Silicon macOS, [uv](https://docs.astral.sh/uv/), and enough disk space for approximately 5.2 GB of model files plus dependencies. Python 3.12 is managed by uv.
+“Full” refers to this full retained FLM graph, not every segment in the raw reconstruction. Neurons without recorded positions still participate in computation.
+
+The dataset provides a contact count for each connected neuron pair. Following FLM, we divide each count by the total retained incoming contacts of the receiving neuron:
+
+```text
+W[receiver, sender] = contacts(sender → receiver) / total_incoming_contacts(receiver)
+```
+
+For example, 20 contacts from A and 80 from C become incoming weights of 0.2 and 0.8. These weights preserve relative anatomical connectivity. They are **not measured electrical synaptic strengths**. The implementation uses unsigned weights and does not incorporate neurotransmitter-specific excitation/inhibition, conduction delays, membrane physiology, or biological spikes.
+
+The fixed recurrence is:
+
+```text
+next_activity = tanh(W × (0.6 × previous_activity + 0.4 × input_drive))
+```
+
+The contact counts come from anatomy; the normalization and update rule are modeling choices adapted from FLM. Every retained edge participates in an update. The graph advances once every three Moshi frames, approximately **4.17 times per second**. This cadence is an engineering choice, not biological time.
+
+Source filenames, checksums, filtering and matrix construction are recorded in [prepare_connectome.py](scripts/prepare_connectome.py) and [the data documentation](docs/full-connectome.md). The FLM reference revision is `7251a8921db4f891c39bd75ee5ad827f7031a24b`.
+
+## How Moshi connects to those neurons
+
+There is no known mapping from Moshi's features to fly speech neurons in this project. The input and output interfaces are engineered:
+
+1. **Summarize Moshi:** reduce its 4,096-number temporal hidden state to 64 bounded features using a fixed signed block projection and scale normalization.
+2. **Drive the graph:** a seeded random 64→128 projection creates input channels. Fixed channel assignments and signs distribute them across all neurons. Seed: `7301`.
+3. **Read the graph:** fixed signed pooling groups neuron activity into 128 values and normalizes their scale. Seed: `7302`.
+4. **Apply the learned adapter:** a fitted 128×4,096 matrix converts those values into a vector compatible with Moshi's text prediction head.
+
+The random mappings are generated reproducibly and remain fixed. They are not labels for concepts such as food, happiness or speech. Negative signs in these mappings do not identify inhibitory biological neurons.
+
+The readout becomes `0.03 × tanh(pooled_activity × adapter)`. Moshi's existing text head projects it to vocabulary scores. We subtract its mean across the vocabulary and cap its root-mean-square magnitude at **0.10 logit units** before adding it to the original scores. The latest correction is reused between graph updates.
+
+Code: [model_reservoir.py](server/model_reservoir.py), [connectome.py](server/connectome.py), [PyTorch hook](server/moshi_torch_engine.py), [shared inference](server/moshi_batch_engine.py).
+
+## What was actually trained
+
+**Only the readout adapter was fitted.** Moshi, the connectome weights, and the input/pooling mappings stayed frozen. We did not import FLM's adapter, fine-tune Moshi, train a new voice, or train the connectome to understand language.
+
+### The audio and training examples
+
+The development calibration used three generated speech clips, approximately 41, 46 and 42 seconds long. The first two were training inputs; the third was held out for validation. These local clips and their AIFF source files are not distributed in this repository. The original generator command, voice and source text were not preserved in a reproducible generation script, so we cannot establish that exact provenance from the retained records. They should not be presented as a public benchmark dataset.
+
+The training script played each clip into frozen Moshi as microphone input while Moshi generated its own stream. The reservoir observed Moshi's internal state but did not change generation during calibration. At each reservoir update, the script saved a pair:
+
+- **Input:** the 128 pooled reservoir values.
+- **Target:** the corresponding original 4,096-number Moshi hidden state.
+
+This produced **361 training pairs and 176 validation pairs**. These are correlated observations from roughly 87 seconds of training audio, not hundreds of independent conversations. No transcripts or correct-answer labels were supplied.
+
+### The loss and fitting procedure
+
+Let `R` be the matrix of reservoir observations, `H` the recorded Moshi states, and `A` the adapter. We solve:
+
+```text
+minimize over A:  sum((R × A − H)²) + 100 × sum(A²)
+
+A = solve(Rᵀ × R + 100 × I, Rᵀ × H)
+```
+
+This is bias-free ridge regression: a linear least-squares fit with a penalty on large weights. There is no gradient-based fine-tuning of the original model. The adapter contains **524,288 fitted values**. Its target is the captured Moshi hidden state; the training script adds no separate target normalization.
+
+The fitted adapter and its metadata were actually saved. Separate fits were performed for the local MLX q4 checkpoint and the Modal PyTorch bf16 checkpoint; the artifacts cannot be interchanged. The loader checks model revision, graph manifest, interface, checksum, shape and finite values.
+
+| Held-out state reconstruction error (MSE; lower is better) | MLX q4 | PyTorch bf16 |
+| --- | ---: | ---: |
+| Fitted adapter | 0.7002 | 0.8476 |
+| Always predict zero | 2.0845 | 2.1798 |
+| Always predict the training mean | 1.0485 | 1.2355 |
+
+These are small development-set measurements of **state reconstruction**, not speech quality, reasoning, or conversational improvement. The local saved weights and audio hashes were checked against the training manifest; the retained Modal log records successful completion of the bf16 calibration. Those local artifacts are excluded from Git.
+
+### Why this is a limited objective
+
+The adapter learns to recover information already present in Moshi. It does not learn which response would be better. Adding the reconstructed signal back into token selection is an experimental design choice; a good reconstruction score does not prove that this helps generation.
+
+Training implementation: [train_moshi_reservoir.py](scripts/train_moshi_reservoir.py). Calibration details and causal checks: [moshi-reservoir.md](docs/moshi-reservoir.md).
+
+## Does it change the words or the voice?
+
+**It directly changes the probabilities of text tokens.** Moshi's audio generator conditions on the sampled text, so changes can propagate to the generated audio and delivery.
+
+The reservoir does not directly control pitch, timbre, voice identity, or buzzing. Eric currently uses Moshi's standard Moshiko voice. The earlier Qwen cloned-voice pipeline is separate and requires the operator's own recording; no voice-cloning reference is included here.
+
+Nothing learns during a call. Recurrence retains activity over time, and generated tokens enter Moshi's ongoing context, but there is no online optimization, reward loop, or separately trained reservoir-feedback controller.
+
+## What the visualization means
+
+- Each point is a recorded neuron cell-body position, not its complete branching morphology.
+- Orange and cyan flashes show sharp rises and falls in the continuous reservoir state used by inference.
+- A change must exceed both `0.025` and `2.5 × recent_average_absolute_change`, followed by a two-update cooldown. Steady activity fades into the dim anatomy.
+- These are **display events, not biological action potentials or dopamine measurements**. There are no random flashes or fixed top-k active neurons.
+- **New bursts** counts change events in the latest displayed update; **Simulation steps** counts completed graph updates in the call; **Last step time** measures graph computation time, not conversation latency.
+- Snapshots are quantized for transmission and aligned with audio playback. The adapter reads full-precision state. The browser does not run a second reservoir.
+
+Drag to rotate, scroll/pinch or use +/− to zoom, and select a neuron to inspect its ID and annotations. The graph is idle outside a call. Ending a call resets its state. Camera controls and reduced-motion rendering do not alter inference.
+
+## What has been verified
+
+Removing the graph's connections zeros its readout contribution. A native PyTorch comparison with the same input audio and random seed produced different sampled text and audio with the intact graph versus removed edges. This establishes **causal influence**, not a quality benefit. A shorter earlier MLX comparison changed scores but happened to sample the same output.
+
+The shared server uses upstream Moshi/Mimi batched streaming, execution masks and per-row resets. Four callers share one loaded model on an L40S, with separate model caches and reservoir states. A deterministic isolation check changed/reset/paused peers without changing the unchanged caller's output. A ten-call scaling test used three GPUs. Detailed conditions, timing limits and results are in [deployment.md](docs/deployment.md); these are bounded development tests, not service guarantees.
+
+## Run it yourself
+
+### Local inference on Apple Silicon
+
+Install [uv](https://docs.astral.sh/uv/), allow space for the model (~5.2 GB), the connectome source data (~1 GB), derived arrays and dependencies, then run:
 
 ```sh
 ./scripts/setup-moshi.sh
 ./scripts/setup-connectome.sh
-# Fit the required readout using the calibration command in docs/moshi-reservoir.md.
-./scripts/start.sh
+
+# Supply your own authorized/generated audio. Last clip is validation.
+.runtime/moshi-venv/bin/python scripts/train_moshi_reservoir.py \
+  --audio /path/to/train-1.wav /path/to/train-2.wav /path/to/validation.wav \
+  --seconds 55
+
+MOSHI_TRANSPORT=local ./scripts/start.sh
 ```
 
-The isolated `.runtime/moshi-venv` environment uses `requirements-moshi.lock`. No Ollama, reference recording, API key, or hosted inference is required for the Moshi path. Downloads use the public Hugging Face model repository; inference runs locally after download.
+Open **http://localhost:8765**, click **Call fly**, and allow microphone access. Headphones help prevent speaker feedback. Calls have a five-minute limit; starting again creates fresh state. A fresh clone does not contain an adapter and will not silently substitute a visualizer if calibration is missing.
 
-The model is `kyutai/moshiko-mlx-q4` at revision `18e4df760a34d5977a34517d7d1580e07acbb2f1`, with `moshi-mlx==0.3.0` and `rustymimi==0.4.1`. The Moshi model weights are CC BY 4.0; see [the model card](https://huggingface.co/kyutai/moshiko-mlx-q4). Moshi MLX code is MIT-licensed.
+Local inference uses pinned `kyutai/moshiko-mlx-q4`; cloud inference uses pinned `kyutai/moshiko-pytorch-bf16`. For model versions, cloud setup, service authentication, concurrent sessions and GPU costs, see [deployment.md](docs/deployment.md). Deployment starts paid GPU resources; a configured warm instance incurs charges while idle.
 
-## How it works
+The public source does not grant access to the operator's hosted GPU or change the website's access policy. Use your own deployment and credentials.
 
-```text
-Microphone → Mimi → Moshi temporal model → text predictions → audio depformer → Mimi → speaker
-                         ↓                      ↑
-                   full connectome → fitted readout
-                         ↓
-                   3D visualization
-```
-
-- **Audio:** mono Float32 PCM over a local WebSocket, 1,920 samples per frame (80 ms). An AudioWorklet resamples continuously; no user-turn segmentation or microphone gate during playback.
-- **Inference:** one thread per GPU serializes batched PyTorch inference, including CUDA Mimi. Four independently masked session rows share loaded weights; each has its own model caches and connectome activity. On Apple Silicon, the single-call MLX backend overlaps a separate CPU codec thread with inference. Transient cloud connection failures retry only before a session connects; generated audio is not transcribed or regenerated.
-- **Playback:** short PCM frames with a 60 ms scheduling cushion. Buffer limits stop a call explicitly if the machine falls behind instead of accumulating seconds of stale audio.
-- **Session:** one active call per browser, with fresh model/codec/reservoir state and a five-minute limit. The final 30 seconds show a countdown. Ending or restarting one cloud call leaves the other session rows running. Start another call after the limit for a new conversation context. Content-free diagnostics record a random call ID, slot, stop reason, frame count, elapsed time and input queue sizes.
-- **Privacy:** live transcripts, audio and feature histories are not saved by the server. Diagnostic scripts explicitly write ignored test artifacts. No microphone access before the call button.
-- **Access:** the local server binds to loopback and checks host/origin. The private Sites deployment uses a server-side gateway to the authenticated Modal service; GPU credentials never enter browser assets.
-
-## What the neural panel shows
-
-The default view uses **FLM’s full retained MaleCNS v1.0 graph: 166,700 neurons and 25,582,938 directed connections**. Every edge participates in each update. The 3D point cloud displays all 139,662 recorded soma positions; 27,038 cells lack positions but remain in the computation.
-
-Moshi's normalized temporal state (4,096 numbers) is reduced to 64 features, then drives a fixed seeded projection into the full graph. Inference updates the graph once every three audio frames; a fitted 128→4096 readout changes text logits. Snapshots come directly from inference and are aligned with browser playback. No browser-driven simulation runs.
-
-**This mapping is engineered, not a biological correspondence.** The display highlights sharp per-neuron changes as short orange/cyan flashes, then fades back to dim anatomy. It counts new events per update and shows selected neurons' deltas. The change threshold adapts to each neuron's recent changes, with an absolute floor and a two-update cooldown; steady high activity does not keep flashing. These are visual change events, not biological spikes or dopamine. The connectome influences text scores and therefore speech generation; no parameters learn during a call.
-
-Drag to rotate; select a point or use arrow keys to inspect its exact ID and annotations. Scroll/pinch or use the +/− controls to zoom. Selected-neuron details appear beside the neuron inside the graph. Hidden tabs stop drawing, and reduced-motion preferences pause the display. Model computation continues independently. Outside calls the graph is idle. Ending a call clears its state. These controls do not alter Moshi.
-
-Data and provenance: [full-connectome.md](docs/full-connectome.md). Source tables (~1 GB) and derived arrays are verified and stored in ignored `.runtime/`. The older 1,045-neuron motor subset remains only on the legacy Qwen page.
-
-## Verification
+### Checks and development
 
 ```sh
-.runtime/moshi-venv/bin/python -m pytest -q tests/test_moshi_server.py tests/test_connectome.py
 npm ci
 npm run check
 npm run test:ui
-npm run test:browser
-# With the local proxy configured for Modal:
-EXPECT_MODAL=1 npm run test:browser
+node --test tests/site-gateway.test.mjs
 ```
 
-Start the local server before browser tests. Browser testing uses the installed Google Chrome, macOS `say`, and FFmpeg to provide prerecorded speech as a fake microphone. `TEST_CHROME_PATH` overrides the Chrome path. The test exercises real Moshi inference, output audio, continuous capture during audible playback, changing model features, visualized activity, cleanup, restart, and mobile layout.
+Model-backed tests require prepared data, an adapter and a running server. See [development notes](docs/development.md) for local/model checks, legacy Qwen setup and call diagnostics, and [serving research](docs/moshi-serving-research.md) for upstream references and implementation choices.
 
-```sh
-.runtime/moshi-venv/bin/python scripts/verify_moshi.py --seconds 40
-.runtime/moshi-venv/bin/python scripts/benchmark_moshi.py
-```
+## Privacy and repository contents
 
-The live API probe measures paced input against output and writes `artifacts/moshi/live-api.wav` and JSON metrics. The offline benchmark loads its own model and measures the sequential path; run it with the server stopped to avoid competing for memory/GPU resources. Test recordings and artifacts are ignored by Git.
+The browser asks for the microphone only when starting a call. Audio is transmitted to the configured inference service during the call. Application diagnostics record operational metadata such as call IDs, timing, queue sizes and stop reasons; the application does not intentionally persist live call audio, transcripts or hidden-state histories. Generated speech and reservoir snapshots are returned to the caller. Local verification scripts can explicitly save test audio and results.
 
-### Historical visualizer-only measurements
+Credentials, local service configurations, personal voice recordings/transcripts, calibration audio, fitted adapters, model downloads, diagnostic logs and test artifacts are excluded from Git. The website build copies a specific allowlist of browser assets, public connectome geometry and a server-side gateway. Service tokens are runtime secrets, never browser configuration. See [publication and privacy notes](docs/publication.md).
 
-With all 25.6 million connections active, the earlier visualizer-only 30-second browser test averaged **28.18 ms per graph update** and **57.96 ms per 80 ms Moshi frame**, with zero input backlog at the final checkpoint. All four browser tests passed. The graph state also matched eight sequential updates of the pinned upstream FLM implementation exactly. See [verification details](docs/full-connectome.md#verification-on-this-mac).
+## Credits and licenses
 
-### Initial measurements on this Mac
+- **Moshi and Mimi:** [Kyutai](https://github.com/kyutai-labs/moshi). Respect the code and model licenses; the pinned Moshiko model cards specify CC BY 4.0 weights.
+- **Reservoir design and retained graph:** [FLM, Alex Wormuth](https://github.com/nftechie/flm), MIT. [Preserved notice](dist/neural/FLM_LICENSE.txt).
+- **MaleCNS data:** FlyEM at HHMI Janelia, University of Cambridge Department of Zoology, MRC Laboratory of Molecular Biology, and Google Research; CC BY 4.0. [Dataset provenance](docs/full-connectome.md).
+- **Rendering:** Three.js and OrbitControls, with their [MIT notice](dist/vendor/THREE-LICENSE.txt).
+- **Legacy motor-circuit assets:** separately attributed in [dist/neural/ATTRIBUTION.md](dist/neural/ATTRIBUTION.md).
 
-On the M3 Pro (18 GB), a 40-second paced API run completed in 40.07 seconds with 39.92 seconds of generated audio. Model compute averaged about 61 ms per 80 ms frame with no input backlog at the reported checkpoints. Input-frame-to-corresponding-server-frame latency averaged 138 ms (95th percentile 244 ms). These are frame-processing measurements, **not guarantees of response time after a question**, and exclude microphone framing and browser playback buffering. The first sequential implementation averaged 85 ms per frame and was too slow; the live server overlaps codec and inference work.
-
-Performance varies with GPU load and memory pressure. Duplex transport does not guarantee every interruption will produce the desired conversational behavior; that remains model-dependent.
-
-The real Chrome test streamed over 30 seconds of audio with the fly and neural renderer active, averaged 54.28 ms of model compute per frame, and verified 81 microphone frames sent during audible playback. It also verified changing model features, stopping, restarting with fresh state, and the mobile layout. The browser uses its native audio sample rate; the worklet resamples to 24 kHz, and a silent model frame primes new caches before the microphone stream begins.
-
-## Previous cloned-voice version
-
-The original Qwen pipeline is preserved in `server/app.py`, `server/engine.py`, `dist/legacy-app.js`, `dist/legacy.html`, and the original `.venv` environment. Its local voice recordings remain in `voices/eric/` and are ignored by Git.
-
-To run it instead, stop Moshi first, then use:
-
-```sh
-./scripts/start-qwen.sh
-```
-
-Open **http://localhost:8766/legacy.html**. It still requires Ollama and the previous voice setup. See [the previous pipeline documentation](docs/qwen-voice-legacy.md). Avoid running both models concurrently on this Mac.
-
-## Interface and source layout
-
-The original fly/phone is built with Three.js 0.180.0, vendored with its MIT notice in `dist/vendor/`. Character motion is illustrative. The neural simulator and data are separately attributed above. If WebGL or the neural panel fails, voice calls remain available.
-
-- `server/moshi_engine.py`: pinned model, codec, cache lifecycle and causal reservoir integration.
-- `server/moshi_app.py`: bounded duplex transport and serialized workers.
-- `dist/app.js`, `dist/duplex-mic-worklet.js`: continuous capture/playback and model telemetry.
-- `server/connectome.py`, `scripts/prepare_connectome.py`: full graph, recurrence, provenance and telemetry.
-- `dist/full-connectome-panel.js`: 3D full-connectome viewer.
-- `dist/neural-panel.js`, `dist/neural-worker.js`, `dist/conversation-drive.js`: legacy motor-circuit viewer.
-- `server/model_reservoir.py`, `docs/moshi-reservoir.md`: fitted readout, model hook, causal validation.
-- `docs/connectome-reservoir-plan.md`: archived earlier feedback-learning proposal (not active).
-
-### Long-session codec fix
-
-A sustained test exposed the codec's default positional-buffer limit near the end of a five-minute call. Each call now constructs a fresh Mimi tokenizer with `max_seq_len=16384`, instead of relying on `reset()` alone, and primes it before accepting microphone frames. This also avoids carrying codec timing state between calls. The model and PCM session limit remains five minutes. The fixed codec subsequently encoded and decoded 300.64 seconds of audio without the positional-limit error, and the complete browser conversation/reconnect tests passed again.
-
-## Diagnosing an early call ending
-
-The server writes bounded, rotating JSON logs to `.runtime/call-events.jsonl` (2 MB per file, three backups). Records include call ID, server queue depths and processing times, browser input/output frame counts, frame gaps, playback backlog, audio-context state, microphone mute/end state, page visibility and socket close codes. Audio, transcripts, hidden states and feature vectors are not accepted by the diagnostic endpoint.
-
-The browser sends a state sample every five seconds and event records when a call ends, the socket closes, or a device/visibility state changes. Unsent diagnostic events are kept in a bounded local retry buffer (64 events) and retried when the server is available. Abrupt browser/process termination can still prevent a final report; preceding samples remain useful. Call-end messages persist, and show a call ID for correlation. A cause cannot be reconstructed retroactively for calls made before these diagnostics existed.
-
-```
-.runtime/moshi-venv/bin/python scripts/diagnose_call.py
-.runtime/moshi-venv/bin/python scripts/diagnose_call.py --call-id 01234567
-```
+Public availability of this repository does not replace the licenses attached to third-party code, data or model weights.
