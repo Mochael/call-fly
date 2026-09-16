@@ -5,23 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111714">
   <meta name="description" content="Call Eric and explore a fly connectome visualization.">
-  <title>Call fly</title>
-  <link rel="stylesheet" href="/style.css">
+  <title>Eric the fruit fly</title>
+  <link rel="stylesheet" href="/style.css?v=20260916-project-link">
   <script type="importmap">{"imports":{"three":"/vendor/three.module.min.js"}}</script>
 </head>
 <body>
   <main>
-    <header class="masthead">
-      <div class="identity">CALL FLY</div>
-      <span class="edition">LIVE DUPLEX · MOSHI</span>
-    </header>
     <div class="workspace">
       <section class="conversation" aria-label="Voice conversation">
         <div class="scene-frame" id="scene-frame">
           <div class="scene-heading"><h1>Give Eric a buzz.</h1></div>
           <canvas id="fly-scene" role="img" aria-label="A dark, red-eyed fly reaching toward a phone. Drag to rotate the view."></canvas>
           <p class="scene-fallback" id="scene-fallback" hidden>The 3D view is unavailable in this browser. You can still talk to Eric below.</p>
-          <div class="scene-caption"><span>ERIC · DROSOPHILA</span><span>DRAG TO LOOK AROUND</span></div>
+          <div class="scene-caption"><span>Eric the fruit fly</span><span>DRAG TO LOOK AROUND</span></div>
         </div>
         <div class="call-dock">
           <div class="call-status"><span class="status-light" id="state-light" aria-hidden="true"></span><div><p id="status" role="status" aria-live="polite">Loading voice model…</p><p class="hint" id="hint">Headphones recommended. Your microphone stays off until you start.</p></div></div>
@@ -30,7 +26,7 @@
         </div>
       </section>
       <section class="neural-panel" id="neural-panel" aria-labelledby="neural-title">
-        <div class="neural-heading"><div><span class="eyebrow">MOSHI + CONNECTOME</span><h2 id="neural-title">Neural activity</h2></div><span class="live-label" data-neural="state">LOADING</span></div>
+        <div class="neural-heading"><h2 id="neural-title">Neural activity</h2><span class="live-label" data-neural="state">LOADING</span></div>
         <p class="neural-subtitle">Full MaleCNS connectome <span data-neural="summary">Loading neuron positions…</span></p>
         <div class="neural-input"><span data-neural="input">No conversation input</span><meter data-neural="input-meter" min="0" max="1" value="0" aria-label="Conversation stimulation strength"></meter></div>
         <div class="neural-viewport">
@@ -42,7 +38,7 @@
         <div class="neural-legend" aria-label="Abstract neural state"><span style="--role-color:#fca13c">Activity rising</span><span style="--role-color:#22b8ee">Activity falling</span><span style="--role-color:#466d7a">Quiet anatomy</span></div>
         <div class="neural-stats"><div><strong data-neural="active">0</strong><span>New bursts</span></div><div><strong data-neural="updates">0</strong><span>Simulation steps</span></div><div><strong data-neural="compute">—</strong><span>Last step time</span></div></div>
         <p class="neural-error" id="neural-error" data-neural="error" role="alert" hidden></p>
-        <p class="project-source"><a href="https://github.com/cashew-labs/call-fly#readme" target="_blank" rel="noopener noreferrer">How it works · GitHub <span aria-hidden="true">↗</span></a></p>
+        <p class="project-source"><a href="https://github.com/cashew-labs/call-fly#readme" target="_blank" rel="noopener noreferrer"><span>How it works · GitHub</span><span aria-hidden="true">↗</span></a></p>
       </section>
       <aside class="transcript-panel" aria-label="Conversation transcript" hidden>
         <div class="transcript-heading"><h2>The conversation</h2><span class="live-label" id="connection">STANDBY</span></div>
