@@ -188,9 +188,15 @@ async function startConversation() {
       if (typeof event.data !== 'string') { playChunk(s, event.data); return; }
       const data = JSON.parse(event.data);
       if(data.type==='warming'){
-        s.waitingMessage=data.phase==='queued'
-          ? 'Eric is busy right now. Your call will start automatically when he’s available.'
-          : data.message;
+        if(data.phase==='queued') {
+          const ahead=data.people_ahead;
+          const place=Number.isSafeInteger(ahead)&&ahead>=0
+            ? (ahead===0 ? "You're next." : `${ahead} ${ahead===1?'person':'people'} ahead of you.`)
+            : '';
+          s.waitingMessage=place
+            ? `Eric is busy right now. ${place} Your call will start automatically.`
+            : 'Eric is busy right now. Your call will start automatically when he’s available.';
+        } else s.waitingMessage=data.message;
         status.textContent=s.waitingMessage;
       } else if (data.type === 'call_started') {
         s.callId=data.call_id;
