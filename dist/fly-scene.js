@@ -171,31 +171,36 @@ export function createFlyScene(canvas, sampleAudio = () => 0) {
   const lc=labelCanvas.getContext('2d');lc.fillStyle='#304b3a';lc.font='24px monospace';lc.fillText('ERIC / DROSOPHILA',15,45);
   const labelTexture=new THREE.CanvasTexture(labelCanvas);
   const deskLabel=mesh(new THREE.PlaneGeometry(2.5,.39),new THREE.MeshBasicMaterial({map:labelTexture,transparent:true}),scene,[-1.05,.321,1.66]);deskLabel.rotation.x=-Math.PI/2;
-  let state='idle',active=false,started=0,gestureStart=-100,smoothLevel=0,lastScreen=-1,disposed=false;
+  let state='idle',active=false,started=0,gestureStart=-Infinity,smoothLevel=0,lastScreen=-1,disposed=false;
+  const gestureDuration=2200;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)');
   const handset=new Path2D('M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z');
   const screenWords={idle:'Ready when you are',connecting:'Calling Eric…',listening:'Listening to you',speaking:'Eric is speaking',thinking:'Thinking…',transcribing:'Listening back…'};
   function drawScreen(now) {
+    const accepted=active&&(reduced.matches||now-gestureStart>=gestureDuration/2);
+    const connected=accepted&&state!=='connecting';
     ctx.fillStyle='#111e1a';ctx.fillRect(0,0,512,1024);
-    ctx.textAlign='center';ctx.fillStyle='#9eaf98';ctx.font='22px monospace';ctx.fillText(active?'LIVE CONVERSATION':'VOICE CALL',256,112);
+    ctx.textAlign='center';ctx.fillStyle='#9eaf98';ctx.font='22px monospace';ctx.fillText(connected?'LIVE CONVERSATION':active?'INCOMING CALL':'VOICE CALL',256,112);
     ctx.fillStyle='#e2eacb';ctx.font='58px sans-serif';ctx.fillText('Human',256,225);
-    ctx.fillStyle='#a0b39a';ctx.font='24px sans-serif';ctx.fillText(screenWords[state]||screenWords.idle,256,275);
-    if(active&&state!=='connecting') {const secs=Math.floor((now-started)/1000);ctx.font='22px monospace';ctx.fillText(`${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`,256,326);}
-    if(active) {
+    ctx.fillStyle='#a0b39a';ctx.font='24px sans-serif';ctx.fillText(active&&!accepted?'Human is calling…':accepted&&!connected?'Connecting…':screenWords[state]||screenWords.idle,256,275);
+    if(connected) {const secs=Math.floor((now-started)/1000);ctx.font='22px monospace';ctx.fillText(`${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`,256,326);}
+    if(connected) {
       for(let i=0;i<25;i++) {
         const height=8+smoothLevel*155*(.4+.6*Math.abs(Math.sin(i*.8+now*.007)));
         ctx.fillStyle='#d4ed9e';ctx.beginPath();ctx.roundRect(95+i*13,465-height/2,5,height,3);ctx.fill();
       }
       ctx.fillStyle='#b5c2aa';ctx.font='23px sans-serif';ctx.fillText('Call in progress',256,590);
+    } else if(active) {
+      ctx.font='23px sans-serif';ctx.fillStyle='#b5c2aa';ctx.fillText(accepted?'Connecting…':'Waiting for Eric to answer…',256,590);
     } else {
       ctx.font='32px sans-serif';ctx.fillStyle='#bccbb2';
       ['1','2','3','4','5','6','7','8','9','*','0','#'].forEach((n,i)=>ctx.fillText(n,144+(i%3)*112,413+Math.floor(i/3)*90));
     }
-    ctx.fillStyle=active?'#b96751':'#c8e89a';ctx.beginPath();ctx.arc(256,839,51,0,Math.PI*2);ctx.fill();
-    ctx.save();ctx.translate(256,839);ctx.rotate(active?Math.PI*.75:0);ctx.scale(2,2);ctx.translate(-12,-12);
-    ctx.strokeStyle=active?'#ffe4d3':'#294030';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.lineJoin='round';
+    ctx.fillStyle=accepted?'#b96751':'#c8e89a';ctx.beginPath();ctx.arc(256,839,51,0,Math.PI*2);ctx.fill();
+    ctx.save();ctx.translate(256,839);ctx.rotate(accepted?Math.PI*.75:0);ctx.scale(2,2);ctx.translate(-12,-12);
+    ctx.strokeStyle=accepted?'#ffe4d3':'#294030';ctx.lineWidth=1.8;ctx.lineCap='round';ctx.lineJoin='round';
     ctx.stroke(handset);ctx.restore();
-    ctx.fillStyle='#8f9f87';ctx.font='18px monospace';ctx.fillText(active?(state==='connecting'?'CONNECTING':'CONNECTED'):'VOICE CALL',256,945);
+    ctx.fillStyle='#8f9f87';ctx.font='18px monospace';ctx.fillText(active?(connected?'CONNECTED':accepted?'CONNECTING':'INCOMING CALL'):'VOICE CALL',256,945);
     texture.needsUpdate=true;
   }
   let w=0,h=0;
@@ -217,8 +222,8 @@ export function createFlyScene(canvas, sampleAudio = () => 0) {
     head.rotation.z=motion*(Math.sin(t*1.2)*.025+(state==='listening'?-.065:0));
     mouth.rotation.z=motion*smoothLevel*Math.sin(t*20)*.12;
     wings.forEach((wing,i)=>{wing.rotation.x=motion*Math.sin(t*(state==='speaking'?19:2)+i)*(.012+smoothLevel*.035);});
-    const elapsed=(now-gestureStart)/1000;
-    const reach=motion&&elapsed>=0&&elapsed<2.2?Math.sin(Math.PI*elapsed/2.2):0;
+    const elapsed=(now-gestureStart)/gestureDuration;
+    const reach=active&&motion&&elapsed>=0&&elapsed<1?Math.sin(Math.PI*elapsed):0;
     scene.updateMatrixWorld(true);
     forelegs.forEach(leg=>{
       if(leg.side!==1)return;
