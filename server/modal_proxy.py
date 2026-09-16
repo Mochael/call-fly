@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .service_access import ServiceAccess, origin_allowed
 from .call_diagnostics import receive as save_diagnostic
+from .call_queue import CallQueue, QueueWaitExpired
 
 ROOT=Path(__file__).resolve().parents[1]
 CONFIG=Path(os.environ.get('MODAL_SERVICE_CONFIG',ROOT/'.runtime/modal-service.json'))
@@ -27,6 +28,17 @@ log=logging.getLogger('uvicorn.error.eric.modal')
 CONNECT_TIMEOUT=180
 PROGRESS_INTERVAL=5
 RETRY_INTERVAL=2
+QUEUE_TIMEOUT=300
+
+
+@asynccontextmanager
+async def call_slot(ws,incoming):
+    queue=ws.app.state.call_slots
+    if queue is None:
+        yield True
+        return
+    async with queue.admission(ws,incoming,timeout=QUEUE_TIMEOUT,progress=PROGRESS_INTERVAL) as admitted:
+        yield admitted
 
 
 def configuration():
@@ -46,6 +58,8 @@ def allowed_origin(headers):
 
 @asynccontextmanager
 async def lifespan(app):
+    capacity=int(os.environ.get('VOICE_CALL_CAPACITY','0'))
+    app.state.call_slots=CallQueue(capacity) if capacity else None
     async with httpx.AsyncClient(timeout=10) as client:
         app.state.http=client
         yield
@@ -94,9 +108,13 @@ async def conversation(ws:WebSocket):
     try:
         url,token=configuration()
         started=time.monotonic()
-        await ws.send_json({'type':'warming','phase':'allocating','message':'Finding a call worker…'})
         async with AsyncExitStack() as stack:
             incoming=asyncio.create_task(ws.receive())
+            tasks=[incoming]
+            admitted=await stack.enter_async_context(call_slot(ws,incoming))
+            if not admitted:return
+            started=time.monotonic()
+            await ws.send_json({'type':'warming','phase':'allocating','message':'Connecting your call…'})
             async def connect_remote():
                 deadline=time.monotonic()+CONNECT_TIMEOUT
                 while True:
@@ -143,6 +161,10 @@ async def conversation(ws:WebSocket):
             tasks.extend(relays)
             done,_=await asyncio.wait(relays,return_when=asyncio.FIRST_COMPLETED)
             for task in done:task.result()
+    except QueueWaitExpired:
+        try:await ws.send_json({'type':'error','code':'queue_timeout',
+            'message':'Eric is still busy after five minutes. Please try again shortly.'})
+        except (RuntimeError,WebSocketDisconnect):pass
     except TimeoutError:
         log.warning('Call worker allocation timed out')
         try:await ws.send_json({'type':'error','code':'capacity_timeout',

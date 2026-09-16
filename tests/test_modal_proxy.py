@@ -163,3 +163,67 @@ def test_transient_allocation_retries_but_auth_errors_do_not(client,monkeypatch)
     with client.websocket_connect('/api/conversation') as ws:
         ws.receive_json();assert ws.receive_json()['type']=='error'
     assert len(attempts)==1
+
+
+def test_waiting_call_never_contacts_gpu_and_cancel_preserves_capacity(client,monkeypatch):
+    client.app.state.call_capacity=1
+    client.app.state.call_slots=module.CallQueue(1)
+    connected=[]
+    class Remote:
+        async def __aenter__(self):
+            connected.append(self);self.stopped=asyncio.Event();return self
+        async def __aexit__(self,*args):pass
+        async def send(self,data):self.stopped.set()
+        def __aiter__(self):return self.messages()
+        async def messages(self):
+            yield json.dumps({'type':'ready'})
+            await self.stopped.wait()
+    monkeypatch.setattr(module.websockets,'connect',lambda *a,**kw:Remote())
+    with client.websocket_connect('/api/conversation') as a:
+        a.receive_json();assert a.receive_json()['type']=='ready'
+        with client.websocket_connect('/api/conversation') as b:
+            assert b.receive_json()['people_ahead']==0
+            assert len(connected)==1
+            with client.websocket_connect('/api/conversation') as c:
+                assert c.receive_json()['people_ahead']==1
+                c.send_text('stop');assert c.receive()['type']=='websocket.close'
+            assert len(connected)==1
+            a.send_text('stop');assert a.receive()['type']=='websocket.close'
+            event=b.receive_json()
+            while event.get('phase')=='queued':
+                assert event['people_ahead']==0
+                event=b.receive_json()
+            assert event['phase']=='allocating'
+            assert b.receive_json()['type']=='ready'
+            assert len(connected)==2
+            b.send_text('stop');assert b.receive()['type']=='websocket.close'
+    assert client.app.state.call_slots.active==0
+
+
+def test_queue_timeout_does_not_open_gpu_or_release_another_call_slot(client,monkeypatch):
+    client.app.state.call_capacity=1
+    slots=module.CallQueue(1);client.app.state.call_slots=slots
+    ticket=client.portal.call(slots.join)
+    monkeypatch.setattr(module,'QUEUE_TIMEOUT',.02)
+    monkeypatch.setattr(module,'PROGRESS_INTERVAL',.01)
+    def forbidden(*a,**kw):raise AssertionError('Queued calls must not contact GPU')
+    monkeypatch.setattr(module.websockets,'connect',forbidden)
+    with client.websocket_connect('/api/conversation') as ws:
+        event=ws.receive_json()
+        assert event['phase']=='queued'
+        while event['type']=='warming':event=ws.receive_json()
+        assert event['code']=='queue_timeout'
+        assert ws.receive()['type']=='websocket.close'
+    assert slots.active==1
+    client.portal.call(slots.leave,ticket)
+
+
+def test_cancel_racing_immediate_slot_acquisition_returns_permit(client):
+    from types import SimpleNamespace
+    async def race():
+        slots=module.CallQueue(1)
+        fake=SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(call_slots=slots,call_capacity=1)))
+        incoming=asyncio.get_running_loop().create_future();incoming.set_result({'type':'websocket.disconnect'})
+        async with module.call_slot(fake,incoming) as admitted:assert not admitted
+        assert slots.active==0
+    client.portal.call(race)
