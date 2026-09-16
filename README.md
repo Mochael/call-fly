@@ -151,6 +151,12 @@ Removing the graph's connections zeros its readout contribution. A native PyTorc
 
 The shared server uses upstream Moshi/Mimi batched streaming, execution masks and per-row resets. Four callers share one loaded model on an L40S, with separate model caches and reservoir states. A deterministic isolation check changed/reset/paused peers without changing the unchanged caller's output. A ten-call scaling test used three GPUs. Detailed conditions, timing limits and results are in [deployment.md](docs/deployment.md); these are bounded development tests, not service guarantees.
 
+## Website hosting
+
+**Website: [call-fly.vercel.app](https://call-fly.vercel.app).** It currently requires Vercel sign-in; the public repository does not grant website access.
+
+The frontend and same-origin voice gateway can run on **Vercel**, while Moshi and the connectome run on **Modal**. The gateway keeps the Modal credential on the server and relays live audio and brain updates. See [Vercel deployment](docs/vercel.md) for setup, access controls and verification, and [Modal deployment](docs/deployment.md) for inference capacity.
+
 ## Run it yourself
 
 ### Local inference on Apple Silicon

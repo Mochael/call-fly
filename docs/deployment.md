@@ -1,4 +1,6 @@
-# Published web interface and GPU voice service
+# Modal GPU voice service and original Sites deployment
+
+For the Vercel frontend and WebSocket gateway, see [vercel.md](vercel.md). The Modal service described below is shared by both hosting options.
 
 ## Architecture
 

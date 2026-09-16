@@ -32,4 +32,4 @@ Also inspect tracked filenames, commit metadata, releases, PR discussions and an
 
 The browser sends microphone audio to the configured inference service only during calls. The application does not intentionally retain live audio, transcripts or model-state histories; it retains bounded operational diagnostics. Test scripts can deliberately write recordings to ignored artifacts. Provider infrastructure has its own operational logging policies.
 
-The Sites build allowlists browser assets and public geometry. `VOICE_SERVICE_TOKEN` is configured separately in the server runtime; it is not embedded in the browser bundle. Publishing source does not grant access to the hosted voice service, alter the website audience, or provision GPUs for repository visitors.
+The Vercel and Sites builds allowlist browser assets and public geometry. `VOICE_SERVICE_TOKEN` is configured separately in the server runtime; it is not embedded in the browser bundle. Publishing source does not grant access to the hosted voice service, alter the website audience, or provision GPUs for repository visitors.

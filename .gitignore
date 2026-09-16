@@ -32,3 +32,5 @@ dist/.openai/
 *.pcm
 voices/eric/*
 !voices/eric/README.md
+.vercel/
+dist/vercel/

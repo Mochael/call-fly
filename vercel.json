@@ -1,0 +1,24 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist/vercel",
+  "regions": ["sfo1"],
+  "functions": {
+    "api/conversation.js": {"maxDuration": 600},
+    "api/health.js": {"maxDuration": 15},
+    "api/call-diagnostics.js": {"maxDuration": 15}
+  },
+  "rewrites": [
+    {"source": "/api/connectome/manifest.json", "destination": "/neural/connectome/manifest.json"},
+    {"source": "/api/connectome/metadata.json", "destination": "/neural/connectome/metadata.json"},
+    {"source": "/api/connectome/positions.bin", "destination": "/neural/connectome/positions.bin"}
+  ],
+  "headers": [
+    {"source": "/api/(.*)", "headers": [{"key": "Cache-Control", "value": "no-store"}]},
+    {"source": "/(.*)", "headers": [
+      {"key": "X-Content-Type-Options", "value": "nosniff"},
+      {"key": "Referrer-Policy", "value": "strict-origin-when-cross-origin"}
+    ]}
+  ]
+}
