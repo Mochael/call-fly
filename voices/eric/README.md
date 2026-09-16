@@ -1,0 +1,1 @@
+Place the original voice sample, converted to mono 24 kHz WAV, at `reference.wav` and its exact transcript at `transcript.txt`. These personal files are excluded from Git. See the root README for conversion and setup instructions. The supplied sample is already installed in this local checkout.

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111714">
+  <meta name="description" content="Call Eric and explore a fly connectome visualization.">
+  <title>Call fly</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">{"imports":{"three":"/vendor/three.module.min.js"}}</script>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div class="identity">CALL FLY</div>
+      <span class="edition">LIVE DUPLEX · MOSHI</span>
+    </header>
+    <div class="workspace">
+      <section class="conversation" aria-label="Voice conversation">
+        <div class="scene-frame" id="scene-frame">
+          <div class="scene-heading"><h1>Give Eric a buzz.</h1></div>
+          <canvas id="fly-scene" role="img" aria-label="A dark, red-eyed fly reaching toward a phone. Drag to rotate the view."></canvas>
+          <p class="scene-fallback" id="scene-fallback" hidden>The 3D view is unavailable in this browser. You can still talk to Eric below.</p>
+          <div class="scene-caption"><span>ERIC · DROSOPHILA</span><span>DRAG TO LOOK AROUND</span></div>
+        </div>
+        <div class="call-dock">
+          <div class="call-status"><span class="status-light" id="state-light" aria-hidden="true"></span><div><p id="status" role="status" aria-live="polite">Loading voice model…</p><p class="hint" id="hint">Headphones recommended. Your microphone stays off until you start.</p></div></div>
+          <button id="call" disabled><span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z" stroke-linejoin="round"/></svg></span><span id="button-label">Getting ready</span></button>
+          <p class="error" id="error" role="alert" hidden></p>
+        </div>
+      </section>
+      <section class="neural-panel" id="neural-panel" aria-labelledby="neural-title">
+        <div class="neural-heading"><div><span class="eyebrow">MOSHI + CONNECTOME</span><h2 id="neural-title">Neural activity</h2></div><span class="live-label" data-neural="state">LOADING</span></div>
+        <p class="neural-subtitle">Full MaleCNS connectome <span data-neural="summary">Loading neuron positions…</span></p>
+        <div class="neural-input"><span data-neural="input">No conversation input</span><meter data-neural="input-meter" min="0" max="1" value="0" aria-label="Conversation stimulation strength"></meter></div>
+        <div class="neural-viewport">
+          <canvas class="neural-canvas" data-neural="canvas" tabindex="0" role="img" aria-label="Fly connectome. Drag to rotate, scroll or pinch to zoom. Select a point or use arrow keys to inspect neurons; Escape clears selection."></canvas>
+          <div class="graph-neuron" data-neural="inspector" hidden><strong data-neural="cell-name"></strong><span data-neural="cell-rate"></span><p data-neural="cell-detail"></p></div>
+          <span class="graph-gesture">Drag to rotate · Scroll to zoom</span>
+          <div class="graph-zoom" aria-label="Graph view controls"><button type="button" data-neural="zoom-out" aria-label="Zoom out">−</button><output data-neural="zoom-level" aria-label="Zoom level">100%</output><button type="button" data-neural="zoom-in" aria-label="Zoom in">+</button><button type="button" data-neural="home" aria-label="Reset graph view">↺</button></div>
+        </div>
+        <div class="neural-legend" aria-label="Abstract neural state"><span style="--role-color:#fca13c">Activity rising</span><span style="--role-color:#22b8ee">Activity falling</span><span style="--role-color:#466d7a">Quiet anatomy</span></div>
+        <div class="neural-stats"><div><strong data-neural="active">0</strong><span>New bursts</span></div><div><strong data-neural="updates">0</strong><span>Simulation steps</span></div><div><strong data-neural="compute">—</strong><span>Last step time</span></div></div>
+        <p class="neural-error" id="neural-error" data-neural="error" role="alert" hidden></p>
+        <details class="neural-explainer"><summary>What am I seeing?</summary><p>Every point is a recorded neuron cell-body position. Brief orange and blue flashes show sharp rises and falls in its computed activity. Steady activity fades into the dim anatomical background.</p><p>These are change events derived from FLM’s continuous states, not biological action potentials. An event requires a change above 0.025 and 2.5 times that neuron’s recent average change, followed by a two-update cooldown. No random flashes or fixed number of active cells are added. The inspector shows the latest change (Δ).</p><p>The same full retained MaleCNS graph used by FLM: 166,700 neurons and 25,582,938 directed connections. Each update uses every connection, weighted by its share of the receiving neuron’s incoming synaptic contacts.</p><p data-neural="mapping"></p><p>New bursts counts sharp activity changes in the latest step. Simulation steps counts completed whole-graph computations since reset. Last step time measures computation time, not conversation latency. The simulation stops and clears activity when the call ends.</p><p>This connectome is part of speech generation: its trained readout adjusts Moshi’s text predictions, which condition the audio model. Wiring and readout stay fixed during calls. This is an experimental integration, not evidence of better speech or biological fly language pathways. It does not model spikes or dopamine.</p><p data-neural="edges"></p><a href="/neural/FULL_CONNECTOME.md" target="_blank" rel="noopener">Data, model &amp; credits ↗</a></details>
+      </section>
+      <aside class="transcript-panel" aria-label="Conversation transcript" hidden>
+        <div class="transcript-heading"><h2>The conversation</h2><span class="live-label" id="connection">STANDBY</span></div>
+        <div class="transcript-body">
+          <div class="transcript-empty" id="transcript-empty"><span class="empty-mark" aria-hidden="true">“</span><h3>Conversation</h3><p>Start a call. Your words and Eric’s replies will appear here.</p></div>
+          <div id="transcript" class="transcript" role="log" aria-label="Live transcript" aria-live="polite" aria-relevant="additions text"></div>
+        </div>
+        <div class="transcript-footer"><span>TRANSCRIPT</span><span>Not saved.</span></div>
+      </aside>
+    </div>
+  </main>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

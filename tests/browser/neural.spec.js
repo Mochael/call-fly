@@ -1,0 +1,53 @@
+import {test, expect} from '@playwright/test';
+
+test('idle graph does no computation; zoom and anchored neuron details work on desktop and mobile', async ({page}) => {
+  const errors=[],requests=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  page.on('websocket',socket=>{if(socket.url().endsWith('/api/connectome'))socket.on('framesent',frame=>requests.push(frame.payload));});
+  await page.setViewportSize({width:1600,height:1000});
+  await page.goto('/');
+  const field=name=>page.locator(`[data-neural="${name}"]`);
+  await expect(field('summary')).toHaveText('166,700 neurons · 25,582,938 connections');
+  await expect(field('state')).toHaveText('IDLE');
+  await expect(field('inspector')).toBeHidden();
+  await expect(page.getByText('Feature channel 1')).toHaveCount(0);
+  await expect(field('updates')).toHaveText('0');
+  await expect(field('compute')).toHaveText('—');
+  await page.waitForTimeout(800);
+  expect(requests).toHaveLength(0);
+  await field('zoom-in').click();
+  await expect(field('zoom-level')).toHaveText('125%');
+  await field('zoom-out').click();
+  await expect(field('zoom-level')).toHaveText('100%');
+  await field('canvas').hover();
+  await page.mouse.wheel(0,-200);
+  await expect(field('zoom-level')).not.toHaveText('100%');
+  await field('home').click();
+  await expect(field('zoom-level')).toHaveText('100%');
+  await field('canvas').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(field('inspector')).toBeVisible();
+  await expect(field('cell-detail')).toContainText('ID ');
+  await expect(field('cell-rate')).toHaveText(/Δ [+-]?\d+\.\d{4}/);
+  const tip=await field('inspector').boundingBox(),graph=await field('canvas').boundingBox();
+  expect(tip.x).toBeGreaterThanOrEqual(graph.x);
+  expect(tip.x+tip.width).toBeLessThanOrEqual(graph.x+graph.width);
+  expect(tip.y+tip.height).toBeLessThanOrEqual(graph.y+graph.height);
+  await page.screenshot({path:'artifacts/neural-desktop.png',fullPage:true});
+  await page.keyboard.press('Escape');
+  await expect(field('inspector')).toBeHidden();
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('#neural-panel').scrollIntoViewIfNeeded();
+  await field('canvas').focus();await page.keyboard.press('ArrowRight');
+  await expect(field('inspector')).toBeVisible();
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({path:'artifacts/neural-mobile.png',fullPage:true});
+  await expect(field('error')).toBeHidden();expect(errors).toEqual([]);
+});
+
+test('reduced motion starts paused while zoom remains available',async({page})=>{
+  await page.emulateMedia({reducedMotion:'reduce'});await page.goto('/');
+  await expect(page.locator('[data-neural="state"]')).toHaveText('PAUSED');
+  await page.getByRole('button',{name:'Zoom in',exact:true}).click();
+  await expect(page.locator('[data-neural="zoom-level"]')).toHaveText('125%');
+});

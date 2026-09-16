@@ -1,0 +1,16 @@
+.venv/
+node_modules/
+__pycache__/
+.pytest_cache/
+.env
+.DS_Store
+voices/**/*.wav
+voices/**/*.m4a
+voices/**/*.txt
+artifacts/
+.runtime/
+test-results/
+playwright-report/
+dist/client/
+dist/server/
+dist/.openai/

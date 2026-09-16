@@ -1,0 +1,18 @@
+{
+  "name": "eric-voice",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:browser": "playwright test",
+    "check": "node --check dist/call-diagnostics.js && node --check dist/app.js && node --check dist/activity-bursts.js && node --check dist/full-connectome-panel.js && node --check dist/duplex-mic-worklet.js && node --check dist/fly-scene.js && node --check dist/mic-worklet.js && node --check dist/neural-panel.js && node --check dist/neural-worker.js && node --check dist/conversation-drive.js",
+    "test:ui": "node --test tests/activity-bursts.test.mjs tests/ui.test.mjs tests/neural.test.mjs tests/duplex-worklet.test.mjs",
+    "pretest:browser": ".runtime/moshi-venv/bin/python scripts/prepare_test_audio.py",
+    "build": "node scripts/build_site.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  }
+}

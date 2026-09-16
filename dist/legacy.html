@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111714">
+  <meta name="description" content="A tiny fly. A phone. A live conversation with Eric.">
+  <title>Eric — on the fly</title>
+  <link rel="stylesheet" href="/style.css">
+  <script type="importmap">{"imports":{"three":"/vendor/three.module.min.js"}}</script>
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <div class="identity">ERIC<span class="identity-divider">/</span><span>ON THE FLY</span></div>
+      <span class="edition">A LITTLE CONVERSATION · 001</span>
+    </header>
+    <div class="workspace">
+      <section class="conversation" aria-label="Voice conversation">
+        <div class="scene-frame" id="scene-frame">
+          <div class="scene-heading"><span class="eyebrow">YOUR FRIEND AT THE OTHER END</span><h1>Give Eric a buzz.</h1></div>
+          <canvas id="fly-scene" role="img" aria-label="A dark, red-eyed fly reaching toward a phone. Drag to rotate the view."></canvas>
+          <p class="scene-fallback" id="scene-fallback" hidden>The 3D view is unavailable in this browser. You can still talk to Eric below.</p>
+          <div class="scene-caption"><span>ERIC · DROSOPHILA</span><span>DRAG TO LOOK AROUND</span></div>
+        </div>
+        <div class="call-dock">
+          <div class="call-status"><span class="status-light" id="state-light" aria-hidden="true"></span><div><p id="status" role="status" aria-live="polite">Waking Eric up…</p><p class="hint" id="hint">Your microphone stays off until you start.</p></div></div>
+          <button id="call" disabled><span class="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z" stroke-linejoin="round"/></svg></span><span id="button-label">Getting ready</span></button>
+          <p class="error" id="error" role="alert" hidden></p>
+        </div>
+      </section>
+      <section class="neural-panel" id="neural-panel" aria-labelledby="neural-title">
+        <div class="neural-heading"><div><span class="eyebrow">CONVERSATION-DRIVEN SIMULATION</span><h2 id="neural-title">Neural activity</h2></div><span class="live-label" data-neural="state">LOADING</span></div>
+        <p class="neural-subtitle">MaleCNS motor circuit <span data-neural="summary">Loading neuron positions…</span></p>
+        <div class="neural-input"><span data-neural="input">No conversation input</span><meter data-neural="input-meter" min="0" max="1" value="0" aria-label="Conversation stimulation strength"></meter></div>
+        <canvas class="neural-canvas" data-neural="canvas" tabindex="0" role="img" aria-label="Motor-circuit firing-rate map. Select a neuron or use the left and right arrow keys to inspect it."></canvas>
+        <div class="neural-legend" aria-label="Neuron roles"><span style="--role-color:#edad70">Motor</span><span style="--role-color:#67c0a4">Premotor</span><span style="--role-color:#b89de4">Descending</span><span style="--role-color:#74abe1">Ascending</span><span style="--role-color:#91a6af">Sensory</span><span class="stim-legend">Direct stimulus</span></div>
+        <div class="neural-stats"><div><strong data-neural="active">0</strong><span>Active &gt;1 Hz</span></div><div><strong data-neural="spikes">0</strong><span>Total spikes</span></div><div><strong data-neural="time">0.00 s</strong><span>Simulated time</span></div></div>
+        <div class="neuron-inspector"><div><strong data-neural="cell-name">Explore a neuron</strong><span data-neural="cell-rate">—</span></div><p data-neural="cell-detail">Hover or select a point to see its identity and activity.</p></div>
+        <div class="neural-controls"><div class="neural-control-row"><button type="button" data-neural="toggle">Pause</button><button type="button" data-neural="reset">Reset</button></div><div class="neural-control-row"><label class="sr-only" for="stim-side">Motor neurons to stimulate</label><select id="stim-side" data-neural="side"><option value="0">Right front leg</option><option value="1">Left front leg</option></select><button type="button" data-neural="pulse">Test pulse</button></div></div>
+        <p class="neural-error" id="neural-error" data-neural="error" role="alert" hidden></p>
+        <details class="neural-explainer"><summary>What am I seeing?</summary><p>Brightness shows simulated firing rate. Yellow rings mark directly stimulated neurons. Colors identify the neuron’s role.</p><p>This is a motor-circuit subset including the ventral nerve cord, not a whole brain. Its connections and positions come from MaleCNS; its dynamics and demonstration inputs are modeled.</p><p>Transmitter labels are annotations, not chemical measurements. Dopamine concentration is not simulated.</p><p>The microphone’s volume, reply-generation state, and audible playback stimulate selected cells. Activity then evolves through the circuit. Silence removes the audio input; there are no automatic demo pulses.</p><p data-neural="mapping"></p><p>The sensory cells here sense legs, not sound. This is an engineered conversation display, not a biological model of hearing or language. The circuit does not choose Eric’s words or move the fly.</p><p data-neural="edges"></p><a href="/neural/ATTRIBUTION.md" target="_blank" rel="noopener">Data, model &amp; credits ↗</a></details>
+      </section>
+      <aside class="transcript-panel" aria-label="Conversation transcript" hidden>
+        <div class="transcript-heading"><h2>The conversation</h2><span class="live-label" id="connection">STANDBY</span></div>
+        <div class="transcript-body">
+          <div class="transcript-empty" id="transcript-empty"><span class="empty-mark" aria-hidden="true">“</span><h3>Small talk.<br>Very small company.</h3><p>Start a call. Your words and Eric’s replies will appear here.</p></div>
+          <div id="transcript" class="transcript" role="log" aria-label="Live transcript" aria-live="polite" aria-relevant="additions text"></div>
+        </div>
+        <div class="transcript-footer"><span>JUST YOU & ERIC</span><span>Not saved.</span></div>
+      </aside>
+    </div>
+    <footer><span>A tiny fly. A phone. All the time in the world.</span><span>VOICE-DRIVEN ANIMATION · LOCAL AUDIO</span></footer>
+  </main>
+  <script type="module" src="/legacy-app.js"></script>
+</body>
+</html>

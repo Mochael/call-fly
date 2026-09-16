@@ -1,0 +1,7 @@
+# Neural activity panel sources
+
+The motor-circuit simulator (`locomotor.js`, `legdynamics.js`) is copied unchanged from [Fly Typist](https://github.com/tegnike/fly-typist), commit `d4ac71a1c4ea7d3353db1627f46bc12f231ee53f`, derived from DesktopFly. Code is MIT; see LICENSE.txt. Copyright 2026 Denis Shiryaev and tegnike.
+
+The unchanged `locomotor_circuit.json` is a MaleCNS v1.0 subgraph extracted by the upstream project. Data is [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Credit the MaleCNS collaboration: FlyEM at HHMI Janelia, University of Cambridge, MRC Laboratory of Molecular Biology, and Google Research. Source: https://male-cns.janelia.org/download/. Extraction assumptions are in LOCOMOTOR_PROVENANCE.md. DATA_LICENSE.md is the upstream notice; only its MaleCNS data is included here, not the separate FlyWire files.
+
+Eric adds a new renderer, neuron inspector, and conversation-driven inputs and manual pulse controls. Neural activity comes from the LIF model using live Moshi hidden-state features and measured microphone/playback volume (or generation-state signals in the legacy Qwen page). Their assignment to cells is an engineered mapping, not an anatomical claim about hearing or language. Eric sets synapticGain to 1.2 (upstream default 2.4); the vendored simulator source and circuit data are unchanged. The conversation drives this display, but the circuit does not control the voice agent. It is not a complete fly brain and does not simulate dopamine concentration.

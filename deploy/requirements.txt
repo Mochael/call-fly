@@ -1,0 +1,11 @@
+moshi @ git+https://github.com/kyutai-labs/moshi.git@e6a55d2722a65870ef52a6c9f6ecfc0e90f38362#subdirectory=moshi
+fastapi==0.141.1
+uvicorn==0.53.0
+numpy==2.2.6
+scipy==1.15.3
+rustymimi==0.4.1
+huggingface-hub==0.28.1
+safetensors==0.5.3
+sphn==0.2.1
+sentencepiece==0.2.0
+python-dotenv==1.2.3
