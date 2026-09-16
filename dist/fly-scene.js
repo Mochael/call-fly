@@ -178,7 +178,7 @@ export function createFlyScene(canvas, sampleAudio = () => 0) {
   function drawScreen(now) {
     ctx.fillStyle='#111e1a';ctx.fillRect(0,0,512,1024);
     ctx.textAlign='center';ctx.fillStyle='#9eaf98';ctx.font='22px monospace';ctx.fillText(active?'LIVE CONVERSATION':'VOICE CALL',256,112);
-    ctx.fillStyle='#e2eacb';ctx.font='58px sans-serif';ctx.fillText('Eric',256,225);
+    ctx.fillStyle='#e2eacb';ctx.font='58px sans-serif';ctx.fillText('Human',256,225);
     ctx.fillStyle='#a0b39a';ctx.font='24px sans-serif';ctx.fillText(screenWords[state]||screenWords.idle,256,275);
     if(active&&state!=='connecting') {const secs=Math.floor((now-started)/1000);ctx.font='22px monospace';ctx.fillText(`${Math.floor(secs/60).toString().padStart(2,'0')}:${(secs%60).toString().padStart(2,'0')}`,256,326);}
     if(active) {
